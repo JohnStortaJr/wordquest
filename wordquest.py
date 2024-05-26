@@ -1,14 +1,14 @@
-import random
-# A basic python implementation of Wordle
+import sys,random
+# A basic python implementation of a certain word guessing game
 remainingTurns = 6
 guessCounter = 0
 availableLetters = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
-misplacedLetter = []
 guessedWords = []
-unusedLetters = []
 result = ['_','_','_','_','_']
 resultList = [['+','+','+','+','+'],['+','+','+','+','+'],['+','+','+','+','+'],['+','+','+','+','+'],['+','+','+','+','+'],['+','+','+','+','+']]
 
+# Check to make sure that guess provided meets all the requirements
+# Print informative error messages if it does not
 def isValidGuess(theGuess):
     errorString = ""
 
@@ -30,17 +30,17 @@ def isValidGuess(theGuess):
     else:
         return True
 
+# Check if the given letter is contained with the provided word
 def foundLetter(currentLetter, currentWord):
     containsLetter = False
 
     for checkLetter in currentWord:
-        #print(f">>>{currentLetter} - {checkLetter}")
         if currentLetter == checkLetter:
-            #print("true")
             containsLetter = True
 
     return containsLetter
 
+# Find the index of the first occurance of the given letter within the provided word
 def findFirstLetterIndex(searchLetter, searchWord):
     letterIndex = -1
 
@@ -50,103 +50,109 @@ def findFirstLetterIndex(searchLetter, searchWord):
     
     return letterIndex
 
+# Print some formatted help to explain how the game works
 def printHelp():
     print("\033[104m" + "Letters in blue are in the correct location" + "\033[0m")
     print("\033[103m" + "Letters in yellow are in the word, but not in the correct location" + "\033[0m")
     print("\033[100m" + "Letters in gray are not in the word" + "\033[0m")
 
+# Populate the wordlist from the external file and randomly select the target word from that list
 wordListFile = open("words.txt", "r")
-
 wordList = wordListFile.read().splitlines() # This method removed the \n\r at the end of each word. readlines() leaves them.
-
 wordIndex = random.randint(0, len(wordList)-1)
 
+# Print the selected word and index (for debugging purposes only)
 #print(f"The selected word is \"{wordList[wordIndex]}\" at index {wordIndex}.")
 
 print("Welcome to WordQuest. You have 6 guesses to determine today's 5-letter word.")
 
 currentGuess = ""
 
+# Main game. Loop until the player guesses the correct word or runs out of guesses
 while remainingTurns > 0:
-    #print(f"You have {remainingTurns} guesses remaining.")
     validGuess = False
 
-    # Validate the guess meets the requirements
+    # Do not accept a guess unless it passes all the requirements
     while validGuess == False:
         currentGuess = input(f"What is your guess [{remainingTurns}] ? ").lower()
-        if currentGuess in ['help', 'HELP']:
+        if currentGuess.lower  == "help":
             printHelp()
 
         validGuess = isValidGuess(currentGuess)
 
+    # Do not decrement remaining turns until a valid guess was received
     remainingTurns -= 1
     
+    # Add the validated guess word to the list
     guessedWords.append(currentGuess)
-    #print(guessedWords)
 
-    # Split target word into list of letters
-    # Split guess word into list of letters
+    # Split guess and target words into lists of letters
     targetLetters = []
-    guessLetters = []
-
     for letter in wordList[wordIndex]:
         targetLetters.append(letter)
-    #print(targetLetters)
     
+    guessLetters = []
     for letter in currentGuess:
         guessLetters.append(letter)
-    #print(guessLetters)
 
-    # Check guess word against the target
-    
+    # Result list is used to display outcome for each letter in the guessed word
     result = ['_','_','_','_','_']
 
-
-    # Is the letter in the target word
-    # is the letter in the correct place in the target word
-
-    # Check if the word is correct
-    if currentGuess == wordList[wordIndex]:
-        print("WELL DONE!!!")
-        print(wordList[wordIndex].upper())
-
-   # Check for all letters that are in the right position
+    # Check the result for each letter in the guessed word
+    # Note the conversion to uppercase if there is a match. This ensures that letter will not be found again.
+    # ANSI escape sequences are used to color-code the output based on the result
     for index in range(5):
+
+        # Does this guessed letter match the letter in the target word?
         if guessLetters[index] == targetLetters[index]:
             targetLetters[index] = targetLetters[index].upper()
             result[index] = "\033[104m" + guessLetters[index].upper() + "\033[0m"
+
+            # Mark this letter as found in the available letters list
             availableLetters[findFirstLetterIndex(guessLetters[index], availableLetters)] = "\033[104m" + guessLetters[index].upper() + "\033[0m"
 
+            # No need to check anthing else, move to the next letter
             continue
     
-        # if target word contains this letter, then set as lower case 
+        # Does the guessed letter exist anywhere in the word?
         if foundLetter(guessLetters[index], targetLetters):
-            #Need to change target letter occurance to upper, not this letter
+            # Change the matching target letter to uppercase to indicate it was found (the index will not match the current index)
             misplacedIndex = findFirstLetterIndex(guessLetters[index], targetLetters)
             targetLetters[misplacedIndex] = targetLetters[misplacedIndex].upper()
             result[index] = "\033[103m" + guessLetters[index].upper() + "\033[0m"
+
+            # Mark this letter as found in the available letters list
             availableLetters[findFirstLetterIndex(guessLetters[index], availableLetters)] = "\033[103m" + guessLetters[index].upper() + "\033[0m"
         else:
-            # letter not in the word, so remove from available letters
+            # Reaching this point indicates that the current guessed letter is not in the word
+            # Mark the letter as not found in the available letters list
             if foundLetter(guessLetters[index], availableLetters):
                 availableLetters[findFirstLetterIndex(guessLetters[index], availableLetters)] = "\033[100m" + guessLetters[index].upper() + "\033[0m"
                 #availableLetters.remove(guessLetters[index])
 
-        #print("")
-        #print(f"T Letters >> {targetLetters}")
-        #print(f"G Letters >> {guessLetters}")
-        #print(f"C Letters >> {result}")
-
-    # fill in remaining letters
+    # Update the result list with the remaining letters from the guessed word
+    # Mark them as not found
     for index in range(5):
         if result[index] == "_":
             result[index] = "\033[100m" + guessLetters[index].upper() + "\033[0m"
 
+    # Add the latest result to the list of guess results and print the formatted list
     resultList[guessCounter] = result
     for x in range(len(resultList)):
         print(''.join(resultList[x]))         
 
+    # If the guessed word is correct, then the player has won
+    # Print a victory message and exit the game
+    if currentGuess == wordList[wordIndex]:
+        print(f"WELL DONE!!! {guessCounter+1}/6")
+        #print(wordList[wordIndex].upper())
+        sys.exit()
+
+    # Print the updated list of available letters
+    print(' '.join(availableLetters))
+
+    # Move to the next guess
     guessCounter += 1
 
-    #print("\033[93m" +  ''.join(resultList[len(resultList)-1]) + "\033[0m")
-    print(' '.join(availableLetters))
+print(f"The word was {wordList[wordIndex].upper()}")
+print("Better luck next time!")
